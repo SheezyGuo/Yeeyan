@@ -91,10 +91,10 @@ public class Yeeyan {
 		System.out.println("Max page count:" + maxPageCount);
 	}
 
-	public Queue<String> getLinkLists() {
+	public Queue<String> getLinkLists(int targetPageNum) {
 		String urlHead = "http://select.yeeyan.org/lists/all/horizontal/";
 		Queue<String> linkLists = new LinkedList<String>();
-		for (int i = 1; i <= this.maxPageCount; i++) {
+		for (int i = 1; i <= targetPageNum; i++) {
 			String htmlCode = this.getHtmlCode(urlHead + String.valueOf(i));
 			if (htmlCode == null) {
 				System.err.println(urlHead + String.valueOf(i) + "===>未能正确打开！");
@@ -255,11 +255,12 @@ public class Yeeyan {
 	}
 
 	public void refreshTo(int targetPageNum) {
-		Queue<String> linkLists = this.getLinkLists();
+		Queue<String> linkLists = this.getLinkLists(targetPageNum);
+		int pageNum = linkLists.size();
 		int now = 1;
-		for (String link = null; now <= targetPageNum; now++) {
+		for (String link = null; now <= pageNum; now++) {
 			System.out.println(String.format("%d/%d proceeding...", now,
-					targetPageNum));
+					pageNum));
 			link = linkLists.poll();
 			storeContent(link);
 		}
