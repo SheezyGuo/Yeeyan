@@ -286,3 +286,4 @@ public class Yeeyan {
 //		System.out.println(content.replaceAll("\\n\\s*","\n"));
 	}
 }
+//�ٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺٺ�
