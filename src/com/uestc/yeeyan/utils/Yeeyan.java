@@ -17,6 +17,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Timer;
@@ -87,7 +90,7 @@ public class Yeeyan {
 				.substring(
 						htmlCode.indexOf("<li>...</li>")
 								+ "<li>...</li>".length(),
-						htmlCode.indexOf("<li><a  href=\"/lists/all/horizontal/2\" >ÏÂÒ»Ò³</a></li>"));
+						htmlCode.indexOf("<li><a  href=\"/lists/all/horizontal/2\" >ä¸‹ä¸€é¡µ</a></li>"));
 		String strInt = desPart.substring(
 				desPart.indexOf("href=\"/lists/all/horizontal/")
 						+ "href=\"/lists/all/horizontal/".length(),
@@ -102,7 +105,7 @@ public class Yeeyan {
 		for (int i = 1; i <= targetPageNum; i++) {
 			String htmlCode = this.getHtmlCode(urlHead + String.valueOf(i));
 			if (htmlCode == null) {
-				System.err.println(urlHead + String.valueOf(i) + "===>Î´ÄÜÕıÈ·´ò¿ª£¡");
+				System.err.println(urlHead + String.valueOf(i) + "===>æœªèƒ½æ­£ç¡®æ‰“å¼€ï¼");
 				continue;
 			}
 			try {
@@ -137,7 +140,7 @@ public class Yeeyan {
 		String content = "";
 		NodeFilter filter = getAttributeFilter(attrs);
 		try {
-			parser.reset();// ÖØÖÃparserÄÚÈİ ·ñÔòparserÄÚÈİÎªÉÏ´ÎmatchÖ®ºóµÄ½Úµã
+			parser.reset();// é‡ç½®parserå†…å®¹ å¦åˆ™parserå†…å®¹ä¸ºä¸Šæ¬¡matchä¹‹åçš„èŠ‚ç‚¹
 			NodeList nodeList = parser.extractAllNodesThatMatch(filter);
 			content = nodeList.elementAt(0).toPlainTextString();
 			return content;
@@ -149,7 +152,7 @@ public class Yeeyan {
 			System.err
 					.println("Attribute not found!You may have to modify the attribute String[].");
 		}
-		return "Not found";
+		return "";
 	}
 
 	public String getMD5(String inputText) {
@@ -211,11 +214,11 @@ public class Yeeyan {
 			// System.out.println("title:" + title);
 			String content = getFiltContent(parser,
 					new String[] { "class", "sa_content" }).replaceAll(
-					"\\n\\s*", "\n").replaceAll("&nbsp;", "");
+					"\\n\\s*", "\n").replaceAll("&nbsp;", " ");
 			// System.out.println("Content:" + content);
-			// ÓÃÕıÔò±í´ïÊ½»ñÈ¡Ê±¼ä µ±Í¨¹ısa_author»ñÈ¡²»×¼È·Ê±¿ÉÓÃ
+			// ç”¨æ­£åˆ™è¡¨è¾¾å¼è·å–æ—¶é—´ å½“é€šè¿‡sa_authorè·å–ä¸å‡†ç¡®æ—¶å¯ç”¨
 			// String timeReg =
-			// "(?<=<span>·¢²¼£º)\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?=</span>)";
+			// "(?<=<span>å‘å¸ƒï¼š)\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?=</span>)";
 			// Pattern timePattern = Pattern.compile(timeReg);
 			// Matcher timeMatcher = timePattern.matcher(htmlCode);
 			// String date = null;
@@ -228,15 +231,20 @@ public class Yeeyan {
 			// }
 			String rawDate = getFiltContent(parser, new String[] { "class",
 					"sa_author" });
-			String date;
+			Date date = null;
 			try {
-				date = rawDate.substring(
-						rawDate.indexOf("·¢²¼£º") + "·¢²¼£º".length(),
-						rawDate.lastIndexOf("Ìô´í"));
+				String sdate = rawDate.substring(
+						rawDate.indexOf("å‘å¸ƒï¼š") + "å‘å¸ƒï¼š".length(),
+						rawDate.lastIndexOf("æŒ‘é”™"));
+				SimpleDateFormat sdf = new SimpleDateFormat(
+						"yyyy-MM-dd HH:mm:ss");
+				date = sdf.parse(sdate);
 			} catch (StringIndexOutOfBoundsException e) {
-				date = "Not found";
+				date = null;
 			}
 			String MD5 = getMD5(content);
+
+			Date time = new Date();
 			// <img
 			// src="http://static.yeeyan.org/upload/image/2015/03/13/14262218586.jpg"
 			// />
@@ -262,14 +270,15 @@ public class Yeeyan {
 			MongoClient mongoClient = new MongoClient("localhost", 27017);
 			DB db = mongoClient.getDB("Yeeyan");
 			DBCollection coll = db.getCollection("yeeyan");
-			BasicDBObject doc = new BasicDBObject("abstract", _abstract)
+			BasicDBObject doc = new BasicDBObject("Abstract", _abstract)
 					.append("Title", title).append("Content", content)
 					.append("Date", date)
-					.append("ImagePath", imagePathQueue.toString())
-					.append("URL", targetUrl).append("MD5", MD5);
+					.append("image", imagePathQueue.toString())
+					.append("Url", targetUrl).append("MD5", MD5)
+					.append("Time", time).append("NewSource", "è¯‘è¨€ç½‘");
 			BasicDBObject query = new BasicDBObject("MD5", MD5);
 			DBCursor cursor = coll.find(query);
-			// Èç¹û¼ÇÂ¼ÖĞÃ»ÓÃÏàÍ¬MD5ÖµµÄÎÄÕÂÔòÌí¼Ó¼ÇÂ¼
+			// å¦‚æœè®°å½•ä¸­æ²¡ç”¨ç›¸åŒMD5å€¼çš„æ–‡ç« åˆ™æ·»åŠ è®°å½•
 			if (!cursor.hasNext()) {
 				coll.insert(doc);
 			} else {
@@ -347,6 +356,8 @@ public class Yeeyan {
 
 		YeeyanTimer timer = new YeeyanTimer();
 		timer.schedule();
+		// Date date = new Date(Calendar.getInstance().getTimeInMillis());
+		// System.out.println(date);
 
 	}
 
