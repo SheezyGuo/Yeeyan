@@ -145,7 +145,6 @@ public class Yeeyan {
 			content = nodeList.elementAt(0).toPlainTextString();
 			return content;
 		} catch (ParserException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NullPointerException e) {
 			e.printStackTrace();
@@ -165,7 +164,6 @@ public class Yeeyan {
 			String md5 = new BigInteger(1, md).toString(16);
 			return md5;
 		} catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -177,28 +175,36 @@ public class Yeeyan {
 		if (!dir.isDirectory()) {
 			dir.mkdirs();
 		}
+		OutputStream os = null;
+		InputStream is = null;
 		try {
 			URL url = new URL(imageUrl);
 			File outFile = new File(storeDir + File.separator
 					+ imageRelativePath);
-			OutputStream os = new FileOutputStream(outFile);
-			InputStream is = url.openStream();
+			os = new FileOutputStream(outFile);
+			is = url.openStream();
 			byte[] buffer = new byte[10240];
 			int length = -1;
 			while ((length = is.read(buffer)) != -1) {
 				os.write(buffer, 0, length);
 			}
-			is.close();
-			os.close();
 		} catch (MalformedURLException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if (is != null) {
+					is.close();
+				}
+				if (os != null) {
+					os.close();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -248,7 +254,7 @@ public class Yeeyan {
 			// <img
 			// src="http://static.yeeyan.org/upload/image/2015/03/13/14262218586.jpg"
 			// />
-			String imgReg = "(?<=<img src=\")http://static.yeeyan.org/upload/image/\\d{4}/\\d{2}/\\d{2}/\\d+\\.((jpg)|(png)|(bmp)|(jpeg))(?=\" />)";
+			String imgReg = "((?<=src=\")http://static.yeeyan.org/upload/image/\\d{4}/\\d{2}/\\d{2}/\\d+\\.((jpg)|(png)|(bmp)|(jpeg)|(gif))(?=\"))|((?<=src=\")http://cdn.yeeyan.org/upload/image/\\d{4}/\\d{2}/(.*?)\\.((jpg)|(png)|(bmp)|(jpeg)|(gif))(?=\"))";
 			Pattern pattern = Pattern.compile(imgReg);
 			Matcher matcher = pattern.matcher(htmlCode);
 			int imageNum = 1;
@@ -276,9 +282,9 @@ public class Yeeyan {
 					.append("image", imagePathQueue.toString())
 					.append("Url", targetUrl).append("MD5", MD5)
 					.append("Time", time).append("NewSource", "译言网");
-			BasicDBObject query = new BasicDBObject("MD5", MD5);
+			BasicDBObject query = new BasicDBObject("Url", targetUrl);
 			DBCursor cursor = coll.find(query);
-			// 如果记录中没用相同MD5值的文章则添加记录
+			// 如果记录中没有相同Url的文章则添加记录
 			if (!cursor.hasNext()) {
 				coll.insert(doc);
 			} else {
@@ -295,10 +301,8 @@ public class Yeeyan {
 							e.getMessage()));
 					f.close();
 				} catch (FileNotFoundException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 			} catch (Exception exc) {
@@ -353,11 +357,12 @@ public class Yeeyan {
 
 		Yeeyan yeeyan = new Yeeyan();
 		yeeyan.CrawlALL();
-
-		YeeyanTimer timer = new YeeyanTimer();
-		timer.schedule();
-		// Date date = new Date(Calendar.getInstance().getTimeInMillis());
-		// System.out.println(date);
+		//
+		// YeeyanTimer timer = new YeeyanTimer();
+		// timer.schedule();
+		Date date = new Date(Calendar.getInstance().getTimeInMillis());
+		System.out.println(date);
+		// yeeyan.storeContent("http://article.yeeyan.org/view/194087/174815");
 
 	}
 
