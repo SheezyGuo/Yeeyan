@@ -270,8 +270,10 @@ public class Yeeyan {
 				downloadImage(imageUrl, this.storeDir, relativePath);
 				String imagePath = String.format("%s%s%s", storeDir,
 						File.separator, relativePath);
-				imagePathQueue.offer(imagePath);
-				imageNum++;
+				if (!imagePathQueue.contains(imagePath)) {
+					imagePathQueue.offer(imagePath);
+					imageNum++;
+				}
 			}
 			MongoClient mongoClient = new MongoClient("localhost", 27017);
 			DB db = mongoClient.getDB("Yeeyan");
@@ -357,11 +359,11 @@ public class Yeeyan {
 
 		Yeeyan yeeyan = new Yeeyan();
 		yeeyan.CrawlALL();
-		//
-		// YeeyanTimer timer = new YeeyanTimer();
-		// timer.schedule();
-		Date date = new Date(Calendar.getInstance().getTimeInMillis());
-		System.out.println(date);
+
+		YeeyanTimer timer = new YeeyanTimer();
+		timer.schedule();
+		// Date date = new Date(Calendar.getInstance().getTimeInMillis());
+		// System.out.println(date);
 		// yeeyan.storeContent("http://article.yeeyan.org/view/194087/174815");
 
 	}
