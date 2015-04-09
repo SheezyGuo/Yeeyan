@@ -169,6 +169,25 @@ public class Yeeyan {
 		return null;
 	}
 
+	public String getContentHtml(Parser parser) {
+		parser.reset();
+		NodeList list;
+		String html = null;
+		try {
+			list = parser
+					.extractAllNodesThatMatch(getAttributeFilter(new String[] {
+							"class", "sa_content" }));
+			html = list.elementAt(0).toHtml();
+
+		} catch (ParserException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.out.println(html);
+		return html;
+	}
+
 	public void downloadImage(String imageUrl, String storeDir,
 			String imageRelativePath) {
 		File dir = new File(storeDir);
@@ -256,7 +275,9 @@ public class Yeeyan {
 			// />
 			String imgReg = "((?<=src=\")http://static.yeeyan.org/upload/image/\\d{4}/\\d{2}/\\d{2}/\\d+\\.((jpg)|(png)|(bmp)|(jpeg)|(gif))(?=\"))|((?<=src=\")http://cdn.yeeyan.org/upload/image/\\d{4}/\\d{2}/(.*?)\\.((jpg)|(png)|(bmp)|(jpeg)|(gif))(?=\"))";
 			Pattern pattern = Pattern.compile(imgReg);
-			Matcher matcher = pattern.matcher(htmlCode);
+
+			String contentHtml = getContentHtml(parser);
+			Matcher matcher = pattern.matcher(contentHtml);
 			int imageNum = 1;
 			Queue<String> imagePathQueue = new LinkedList<String>();
 			while (matcher.find()) {
