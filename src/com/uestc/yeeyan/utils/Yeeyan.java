@@ -1,7 +1,6 @@
 package com.uestc.yeeyan.utils;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -18,7 +17,6 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -184,46 +182,68 @@ public class Yeeyan {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println(html);
 		return html;
 	}
 
-	public void downloadImage(String imageUrl, String storeDir,
-			String imageRelativePath) {
-		File dir = new File(storeDir);
-		if (!dir.isDirectory()) {
-			dir.mkdirs();
+	private class ImageDownloader implements Runnable {
+		private String imageUrl, storeDir, imageRelativePath;
+
+		public ImageDownloader(String imageUrl, String storeDir,
+				String imageRelativePath) {
+			this.imageUrl = imageUrl;
+			this.storeDir = storeDir;
+			this.imageRelativePath = imageRelativePath;
 		}
-		OutputStream os = null;
-		InputStream is = null;
-		try {
-			URL url = new URL(imageUrl);
-			File outFile = new File(storeDir + File.separator
-					+ imageRelativePath);
-			os = new FileOutputStream(outFile);
-			is = url.openStream();
-			byte[] buffer = new byte[10240];
-			int length = -1;
-			while ((length = is.read(buffer)) != -1) {
-				os.write(buffer, 0, length);
+
+		public void run() {
+			File dir = new File(storeDir);
+			if (!dir.isDirectory()) {
+				dir.mkdirs();
 			}
-		} catch (MalformedURLException e1) {
-			e1.printStackTrace();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
+			OutputStream os = null;
+			InputStream is = null;
 			try {
-				if (is != null) {
-					is.close();
+				URL url = new URL(imageUrl);
+				File outFile = new File(storeDir + File.separator
+						+ imageRelativePath);
+				os = new FileOutputStream(outFile);
+				is = url.openStream();
+				byte[] buffer = new byte[1024];
+				int length = -1;
+				while ((length = is.read(buffer)) != -1) {
+					os.write(buffer, 0, length);
 				}
-				if (os != null) {
-					os.close();
-				}
+			} catch (MalformedURLException e1) {
+				e1.printStackTrace();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
 			} catch (IOException e) {
 				e.printStackTrace();
+			} finally {
+				try {
+					if (is != null) {
+						is.close();
+					}
+					if (os != null) {
+						os.close();
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
+		}
+	}
+
+	public boolean downloadInTimeout(ImageDownloader downloader, int timeout) {
+		Thread t = new Thread(downloader);
+		t.start();
+		try {
+			t.join(timeout);
+			return true;
+		} catch (InterruptedException e) {
+			System.err.println("Iamge download timeout in "
+					+ downloader.imageUrl);
+			return false;
 		}
 	}
 
@@ -279,30 +299,38 @@ public class Yeeyan {
 			String contentHtml = getContentHtml(parser);
 			Matcher matcher = pattern.matcher(contentHtml);
 			int imageNum = 1;
-			Queue<String> imagePathQueue = new LinkedList<String>();
+			Queue<String> imageUrlQueue = new LinkedList<String>();
+			Queue<String> downloadedImageQueue = new LinkedList<String>();
 			while (matcher.find()) {
 				String imageUrl = matcher.group();
-				// System.out.println("imageUrl:" + imageUrl);
+				if (imageUrlQueue.contains(imageUrl)) {
+					continue;
+				} else {
+					imageUrlQueue.offer(imageUrl);
+				}
 				String postfix = imageUrl.substring(
 						imageUrl.lastIndexOf(".") + 1, imageUrl.length())
 						.replace(" ", "");
 				String relativePath = String.format("%s_%04d.%s", MD5,
 						imageNum, postfix);
-				downloadImage(imageUrl, this.storeDir, relativePath);
-				String imagePath = String.format("%s%s%s", storeDir,
+				ImageDownloader downloader = new ImageDownloader(imageUrl,
+						this.storeDir, relativePath);
+				int timeout = 60 * 1000; // 1 min
+				String imagePath = String.format("%s%s%s", this.storeDir,
 						File.separator, relativePath);
-				if (!imagePathQueue.contains(imagePath)) {
-					imagePathQueue.offer(imagePath);
+				if (downloadInTimeout(downloader, timeout)) {
+					downloadedImageQueue.offer(imagePath);
 					imageNum++;
 				}
 			}
+			
 			MongoClient mongoClient = new MongoClient("localhost", 27017);
 			DB db = mongoClient.getDB("Yeeyan");
 			DBCollection coll = db.getCollection("yeeyan");
 			BasicDBObject doc = new BasicDBObject("Abstract", _abstract)
 					.append("Title", title).append("Content", content)
 					.append("Date", date)
-					.append("image", imagePathQueue.toString())
+					.append("image", downloadedImageQueue.toString())
 					.append("Url", targetUrl).append("MD5", MD5)
 					.append("Time", time).append("NewSource", "译言网");
 			BasicDBObject query = new BasicDBObject("Url", targetUrl);
